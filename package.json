@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-test.ts",
     "record:schema": "tsx scripts/record-schema.ts",
-    "conformance:hmem": "tsx vendor/meterless/hmem/conformance/runner.ts"
+    "conformance:hmem": "tsx vendor/meterless/hmem/conformance/runner.ts",
+    "validate:cases": "tsx scripts/validate-cases.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

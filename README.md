@@ -12,7 +12,9 @@ Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/op
 | Meterless Runtime provider (Nightshift) | done, tested against a mock runtime |
 | H-MEM memory engine (Meterless) | vendored; conformance suite 13/13 |
 | Smoke test and schema recorder for the laptop | done |
-| Case designer, validator, grader, coach | next |
+| Evidence-based grader | done, tested |
+| Case validator and six seed cases | done; seed cases not yet run on live data |
+| Case designer and coach (Nemotron) | next |
 | Web interface with the evidence panel | next |
 
 ## How it fits together
@@ -52,6 +54,7 @@ You need Zetaris running locally in Docker and Meterless Nightshift with an NVID
 | `npm run typecheck` | TypeScript check |
 | `npm run smoke` | Checks Zetaris and Nightshift together and records their replies in `fixtures/recorded` |
 | `npm run record:schema` | Records the sample databases' tables, columns and a few rows |
+| `npm run validate:cases` | Runs every seed case through the validator against your Zetaris |
 | `npm run conformance:hmem` | Runs the H-MEM conformance suite against the vendored engine |
 
 ## Pre-existing components
