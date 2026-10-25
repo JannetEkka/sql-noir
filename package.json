@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "start": "tsx src/server.ts",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-test.ts",

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQL Noir</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">SQL <span>Noir</span></div>
+    <div class="status" id="status">
+      <span class="pill" id="st-zetaris">Zetaris …</span>
+      <span class="pill" id="st-meterless">Nightshift …</span>
+    </div>
+    <div class="actions">
+      <button id="btn-next">Next case</button>
+      <button id="btn-design" class="ghost" title="Nemotron drafts a case for your weakest skill; the validator checks it on Zetaris">Design a case</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel case" aria-label="Case file">
+      <h2>Case file</h2>
+      <div id="case-empty" class="muted">Press <b>Next case</b> to get your first case.</div>
+      <div id="case" hidden>
+        <div class="case-meta"><span id="case-level"></span><span id="case-skills"></span><span id="case-origin"></span></div>
+        <h3 id="case-title"></h3>
+        <p id="case-story" class="story"></p>
+        <p class="question"><span>The question</span><span id="case-question"></span></p>
+        <p id="case-why" class="muted small"></p>
+        <div id="recalled" class="recalled" hidden>
+          <h4>Recalled from memory <small>H-MEM</small></h4>
+          <ul id="recalled-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel work" aria-label="Your query">
+      <h2>Your query <small>Ctrl+Enter to run</small></h2>
+      <textarea id="sql" spellcheck="false" placeholder="SELECT ... FROM TPCDS_DB.store ..."></textarea>
+      <div class="row"><button id="btn-run">Run on Zetaris</button><span id="run-note" class="muted small"></span></div>
+      <div id="verdict" class="verdict" hidden></div>
+      <div class="table-wrap"><table id="result"></table></div>
+      <div id="explain" class="explain" hidden>
+        <label for="why">Why does your query prove it?</label>
+        <textarea id="why" placeholder="Walk the coach through your query: what each part does and why it answers the question."></textarea>
+        <button id="btn-explain">Close the case</button>
+      </div>
+      <div id="reveal" class="reveal" hidden>
+        <h4>Case closed</h4>
+        <p id="judgement"></p>
+        <p class="muted small">The reference query:</p>
+        <pre id="answer-sql"></pre>
+        <div class="table-wrap"><table id="answer"></table></div>
+      </div>
+    </section>
+
+    <section class="panel side" aria-label="Evidence and coach">
+      <h2>Evidence</h2>
+      <div id="evidence" class="muted">Run a query to see how it compares with the answer.</div>
+      <h2>Coach</h2>
+      <ol id="hints" class="hints"></ol>
+      <h2>Memory <small>H-MEM</small></h2>
+      <ul id="memory" class="memory"><li class="muted">Nothing yet.</li></ul>
+      <div id="ledger" class="ledger" hidden></div>
+    </section>
+  </main>
+
+  <section class="panel trace" aria-label="Agent trace">
+    <h2>Agent trace <small>every step, in order</small></h2>
+    <ol id="trace"></ol>
+  </section>
+  <script src="/app.js"></script>
+</body>
+</html>

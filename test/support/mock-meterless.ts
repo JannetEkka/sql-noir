@@ -12,7 +12,8 @@ export interface MockRuntime {
   close(): Promise<void>;
 }
 
-export async function startMockRuntime(token: string): Promise<MockRuntime> {
+// `reply`, when given, decides the assistant's text for each chat request.
+export async function startMockRuntime(token: string, reply?: (body: any) => string): Promise<MockRuntime> {
   const state = { failNext429: 0 };
   const requests: MockRuntime["requests"] = [];
   const server = http.createServer((req, res) => {
@@ -43,7 +44,7 @@ export async function startMockRuntime(token: string): Promise<MockRuntime> {
             choices: [{ message: { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: tool, arguments: '{"sql":"SELECT 1"}' } }] } }],
           });
         }
-        return send(200, { model, choices: [{ message: { role: "assistant", content: "The connection works." } }] });
+        return send(200, { model, choices: [{ message: { role: "assistant", content: reply ? reply(body) : "The connection works." } }] });
       }
       send(404, { error: "not found" });
     });
