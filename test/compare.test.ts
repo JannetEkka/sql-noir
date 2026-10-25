@@ -23,8 +23,8 @@ test("the same rows in another order, with renamed columns, is correct", () => {
   const v = compareResults(expected, actual);
   assert.equal(v.kind, "correct");
   assert.deepEqual(v.evidence.columnMatches, [
-    { expected: "store_name", actual: "name" },
-    { expected: "returns", actual: "returns_count" },
+    { expected: "store_name", actual: "name", exact: true },
+    { expected: "returns", actual: "returns_count", exact: true },
   ]);
 });
 
@@ -54,13 +54,14 @@ test("rows that shouldn't be there are named, even with columns reordered", () =
   const v = compareResults(expected, actual);
   assert.equal(v.kind, "extra-rows");
   assert.deepEqual(v.evidence.extra, [["able", 7]]);
+  assert.deepEqual(v.evidence.columnMatches.map((c) => c.actual), ["store_name", "returns"]);
 });
 
 test("a column with the wrong values is pointed at", () => {
   const actual = { columns: ["store_name", "returns"], rows: [["ation", 12], ["bar", 9], ["eing", 4]] };
   const v = compareResults(expected, actual);
   assert.equal(v.kind, "wrong-columns");
-  assert.deepEqual(v.evidence.columnMatches.find((c) => c.expected === "returns"), { expected: "returns", actual: null });
+  assert.deepEqual(v.evidence.columnMatches.find((c) => c.expected === "returns"), { expected: "returns", actual: null, exact: false });
   assert.match(describeVerdict(v), /returns/);
   assert.equal(v.evidence.missing.length, 3);
 });

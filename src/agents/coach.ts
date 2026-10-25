@@ -59,7 +59,7 @@ function evidenceText(verdict: Verdict): string {
     `Rows expected: ${e.expectedRows}; rows returned: ${e.actualRows}.`,
     e.missing.length ? `Some expected rows the player missed (do not reveal them): ${JSON.stringify(e.missing)}` : "",
     e.extra.length ? `Rows the player returned that should not be there: ${JSON.stringify(e.extra)}` : "",
-    `Column matching: ${e.columnMatches.map((m) => `${m.expected} -> ${m.actual ?? "no match"}`).join("; ")}`,
+    `Column matching: ${e.columnMatches.map((m) => `${m.expected} -> ${m.actual === null ? "no match" : m.exact ? m.actual : `${m.actual} (some values differ)`}`).join("; ")}`,
   ]
     .filter(Boolean)
     .join("\n");

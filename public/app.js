@@ -68,7 +68,7 @@ function drawVerdict(r) {
   $("evidence").innerHTML = `<dl>
       <dt>Verdict</dt><dd>${esc(r.verdict.kind)}</dd>
       <dt>Rows</dt><dd>${e.actualRows} returned, ${e.expectedRows} expected</dd>
-      <dt>Columns</dt><dd>${e.columnMatches.map((c) => `${esc(c.expected)} → ${c.actual ? esc(c.actual) : '<span style="color:var(--bad)">no match</span>'}`).join("<br>")}</dd>
+      <dt>Columns</dt><dd>${e.columnMatches.map((c) => `${esc(c.expected)} → ${c.actual === null ? '<span style="color:var(--bad)">no match</span>' : c.exact ? esc(c.actual) : `${esc(c.actual)} <span class="muted">(some values differ)</span>`}`).join("<br>")}</dd>
     </dl>${e.extra.length ? `<p class="small">Rows of yours that shouldn't be there:</p><div class="table-wrap"><table>${e.extra.map((row) => `<tr>${row.map((x) => `<td>${esc(x)}</td>`).join("")}</tr>`).join("")}</table></div>` : ""}${(r.verdict.notes ?? []).map((n) => `<p class="small muted">${esc(n)}</p>`).join("")}`;
 }
 

@@ -20,8 +20,9 @@ export interface Verdict {
     actualRows: number;
     missing: unknown[][];
     extra: unknown[][];
-    // For each expected column, the player's column that matched it, or null.
-    columnMatches: { expected: string; actual: string | null }[];
+    // For each expected column, the player's column that lines up with it, or
+    // null; exact when it holds the same values.
+    columnMatches: { expected: string; actual: string | null; exact: boolean }[];
   };
 }
 
@@ -60,14 +61,16 @@ function valueOverlap(expected: ResultSet, e: number, actual: ResultSet, a: numb
   const right = new Set(actual.rows.map((row) => normalizeValue(row[a])));
   let shared = 0;
   for (const v of left) if (right.has(v)) shared++;
-  const union = left.size + right.size - shared;
-  return union === 0 ? 1 : shared / union;
+  // Containment, not similarity: a column with extra or missing rows still
+  // holds the same kind of values, so it should still line up.
+  const smaller = Math.min(left.size, right.size);
+  return smaller === 0 ? 0 : shared / smaller;
 }
 
 // Maps each expected column to a player's column, so the player can name
 // columns differently or put them in another order. An exact match holds the
-// same values; failing that, the column sharing most of its values is used to
-// line rows up for the evidence (at least half of the distinct values).
+// same values; failing that, the column whose distinct values mostly contain
+// (or are contained in) the expected ones lines rows up for the evidence.
 function matchColumns(expected: ResultSet, actual: ResultSet): { index: number | null; exact: boolean }[] {
   const actualWidth = width(actual);
   const used = new Set<number>();
@@ -114,7 +117,8 @@ export function compareResults(expected: ResultSet, actual: ResultSet, opts: { o
   const matches = matchColumns(expected, actual);
   const columnMatches = matches.map((m, e) => ({
     expected: columnName(expected, e),
-    actual: m.exact && m.index !== null ? columnName(actual, m.index) : null,
+    actual: m.index !== null ? columnName(actual, m.index) : null,
+    exact: m.exact,
   }));
   const base = { expectedRows: expected.rows.length, actualRows: actual.rows.length, columnMatches };
 
@@ -151,7 +155,7 @@ export function describeVerdict(v: Verdict): string {
     case "wrong-order":
       return "The right rows, in the wrong order. The case asks for them sorted.";
     case "wrong-columns": {
-      const unmatched = columnMatches.filter((c) => c.actual === null).map((c) => c.expected);
+      const unmatched = columnMatches.filter((c) => !c.exact).map((c) => c.expected);
       return `The right number of rows, but no column of yours holds the values for: ${unmatched.join(", ")}.`;
     }
     case "missing-rows":
