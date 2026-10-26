@@ -101,6 +101,11 @@ export class ZetarisClient {
         signal: AbortSignal.timeout(this.config.timeoutMs ?? 120_000),
       });
     } catch (err) {
+      const name = (err as Error).name;
+      if (name === "TimeoutError" || name === "AbortError") {
+        const secs = Math.round((this.config.timeoutMs ?? 120_000) / 1000);
+        throw new ZetarisError(`Zetaris didn't finish this query within ${secs} s. It may be too heavy for this machine; try narrowing it.`, undefined, sql);
+      }
       throw new ZetarisError(
         `Can't reach Zetaris at ${this.base} (${(err as Error).message}). Is it running? In Ubuntu: cd ~/zetaris-platform && docker compose start`,
         undefined,

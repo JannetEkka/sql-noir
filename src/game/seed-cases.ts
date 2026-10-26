@@ -1,5 +1,6 @@
 // Hand-written starter cases on the sample data that ships with a local
-// Zetaris (TPCDS_DB, the TPC-DS retail benchmark, and NY_TAXI). Column names
+// Zetaris (TPCDS_DB, the TPC-DS retail benchmark, and NY_TAXI), kept to
+// queries a laptop answers in seconds. Column names
 // follow the standard TPC-DS and NYC TLC schemas; every case still has to pass
 // validateCase against the live data before a player sees it
 // (npm run validate:cases). The case designer adds new cases at runtime.
@@ -36,14 +37,14 @@ export const SEED_CASES: Case[] = [
   {
     id: "seed-borough-zones",
     title: "Whose turf",
-    story: "A taxi dispatcher says one borough is carved into more zones than any other, which makes it the easiest place to lose a tail.",
-    question: "Which borough has the most taxi zones, and how many does it have?",
-    answerSql: "SELECT Borough, COUNT(*) AS zones FROM NY_TAXI.taxi_zones GROUP BY Borough ORDER BY zones DESC LIMIT 1",
-    orderMatters: true,
-    skills: ["aggregate", "group-by", "sort-limit"],
+    story: "A taxi dispatcher swears the city is carved up so you can lose a tail in any borough. Before you pick your turf, find out how the zones are split.",
+    question: "How many taxi zones does each borough have? Show each borough and its count.",
+    answerSql: "SELECT Borough, COUNT(*) AS zones FROM NY_TAXI.taxi_zones GROUP BY Borough",
+    orderMatters: false,
+    skills: ["aggregate", "group-by"],
     level: 2,
     databases: ["NY_TAXI"],
-    hints: ["NY_TAXI.taxi_zones has one row per zone, with its Borough.", "GROUP BY the borough and COUNT(*) the zones in each."],
+    hints: ["NY_TAXI.taxi_zones lists the zones, each with its Borough.", "GROUP BY the borough and COUNT(*) the zones in each."],
     origin: "seed",
   },
   {
@@ -81,20 +82,20 @@ export const SEED_CASES: Case[] = [
     origin: "seed",
   },
   {
-    id: "seed-losing-categories",
-    title: "Selling at a loss",
-    story: "Head office suspects some departments sold below cost all through 2001 and nobody noticed.",
-    question: "Which item categories had a negative total net profit in store sales in 2001? Show each category and its total net profit.",
-    answerSql:
-      "SELECT i.i_category, SUM(ss.ss_net_profit) AS net_profit FROM TPCDS_DB.store_sales ss JOIN TPCDS_DB.item i ON ss.ss_item_sk = i.i_item_sk JOIN TPCDS_DB.date_dim d ON ss.ss_sold_date_sk = d.d_date_sk WHERE d.d_year = 2001 GROUP BY i.i_category HAVING SUM(ss.ss_net_profit) < 0",
+    id: "seed-crowded-towns",
+    title: "Crowded towns",
+    story: "Head office thinks some towns have more of our stores than they need. Two shops on the same street, cutting each other's throats.",
+    question: "Which cities have two or more stores? Show each city and how many stores it has.",
+    answerSql: "SELECT s_city, COUNT(*) AS stores FROM TPCDS_DB.store GROUP BY s_city HAVING COUNT(*) >= 2",
     orderMatters: false,
-    skills: ["join", "date-logic", "group-by", "having"],
-    level: 3,
+    skills: ["aggregate", "group-by", "having"],
+    level: 2,
     databases: ["TPCDS_DB"],
     hints: [
-      "You need three tables: store_sales, item (for the category) and date_dim (for the year).",
-      "Filter rows with WHERE, but filter groups by their total with HAVING.",
+      "Stores are in TPCDS_DB.store, each with its s_city.",
+      "Group the stores by city, count them, and keep the groups with HAVING, not WHERE: WHERE can't see a count.",
     ],
     origin: "seed",
   },
+
 ];

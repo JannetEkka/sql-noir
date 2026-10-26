@@ -60,6 +60,14 @@ test("an unreachable Zetaris says how to start it", async () => {
   await assert.rejects(client.runSql("SELECT 1"), /docker compose start/);
 });
 
+test("a query that runs too long says so, instead of blaming the connection", async () => {
+  const impl = (async () => {
+    throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  }) as unknown as typeof fetch;
+  const client = new ZetarisClient({ ...config, fetchImpl: impl, timeoutMs: 120_000 });
+  await assert.rejects(client.runSql("SELECT 1"), /didn't finish this query within 120 s/);
+});
+
 test("extractColumns finds names in the usual places", () => {
   assert.deepEqual(extractColumns({ columns: ["a", "b"], data: [] }), ["a", "b"]);
   assert.deepEqual(extractColumns({ schema: { fields: [{ name: "x" }] } }), ["x"]);
