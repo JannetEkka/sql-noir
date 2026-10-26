@@ -166,6 +166,16 @@ test("a case checked once opens without running its query again", async () => {
   assert.equal(files[0].sample.rows.length, 1);
 });
 
+test("skipping an open case moves on to a different one", async () => {
+  const other = { ...CASE, id: "seed-other", title: "Another case" };
+  const provider = new MeterlessProvider({ baseUrl: "http://127.0.0.1:9/v1", token: "tok" });
+  const game = new Game({ run, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE, other] });
+  await game.next();
+  const first = game.view().case!.id;
+  await game.next();
+  assert.notEqual(game.view().case!.id, first);
+});
+
 test("the case files list the tables a query names", async () => {
   const { tablesIn } = await import("../src/game/files.ts");
   assert.deepEqual(tablesIn("SELECT * FROM TPCDS_DB.store_sales ss JOIN tpcds_db.date_dim d ON 1=1 JOIN TPCDS_DB.store_sales x"), ["TPCDS_DB.store_sales", "TPCDS_DB.date_dim"]);

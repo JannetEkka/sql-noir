@@ -119,3 +119,7 @@ pre { background: #101114; border: 1px solid var(--line); border-radius: 6px; pa
 .chip small { color: var(--muted); margin-left: 4px; }
 .file details { margin-top: 4px; font-size: 12px; }
 .file summary { cursor: pointer; color: var(--muted); }
+
+/* First visit */
+.welcome h3 { font: 700 21px var(--type); color: var(--accent); margin: 4px 0 10px; }
+button.big { font-size: 17px; padding: 12px 20px; margin: 6px 0 10px; }

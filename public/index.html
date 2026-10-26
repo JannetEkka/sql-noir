@@ -29,7 +29,12 @@
     <section class="panel case" aria-label="Case file">
       <div class="stamp" id="stamp" hidden>Case closed</div>
       <h2>Case file</h2>
-      <div id="case-empty" class="muted">Press <b>Next case</b> to get your first case.</div>
+      <div id="case-empty" class="welcome">
+        <h3>New in town, detective?</h3>
+        <p class="story">The archives are full of cases nobody has cracked. You write the SQL. Zetaris holds the evidence. Your partner Nemo keeps you honest.</p>
+        <button id="btn-start" class="big">Take your first case</button>
+        <p class="muted small">Each case shows the tables you need. A wrong answer comes with the evidence; a hint from Nemo costs points.</p>
+      </div>
       <div id="case" hidden>
         <div class="case-meta"><span id="case-level"></span><span id="case-skills"></span><span id="case-origin"></span></div>
         <h3 id="case-title"></h3>

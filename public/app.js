@@ -129,6 +129,7 @@ function drawState(s) {
   $("case-empty").hidden = !!g.case;
   $("case").hidden = !g.case;
   $("stamp").hidden = !g.case || g.phase !== "closed";
+  $("btn-next").textContent = !g.case ? "Take your first case" : g.phase === "closed" ? "Next case" : "Skip case";
   if (g.case) {
     if (g.case.id !== shownCaseId) {
       shownCaseId = g.case.id;
@@ -227,6 +228,7 @@ async function act(kind, path, body) {
   }
 }
 
+$("btn-start").onclick = () => $("btn-next").click();
 $("btn-next").onclick = async () => {
   $("verdict").hidden = true;
   $("result").innerHTML = "";

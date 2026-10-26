@@ -139,8 +139,11 @@ export class Game {
 
   async next(): Promise<boolean> {
     const { memory, trace } = this.deps;
+    // Skipping an open case shouldn't hand the same case straight back.
+    const skipped = this.current && this.current.phase !== "closed" ? this.current.c : null;
+    if (skipped) trace.log("game master", "skipped the case", `"${skipped.title}"`);
     for (;;) {
-      const solved = [...memory.solvedCaseIds(), ...this.broken];
+      const solved = [...memory.solvedCaseIds(), ...this.broken, ...(skipped ? [skipped.id] : [])];
       const weak = memory.weakSkills();
       const pick = pickNextCase(this.cases, solved, weak);
       if (!pick) {
