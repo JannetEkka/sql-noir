@@ -1,6 +1,6 @@
 # SQL Noir (working name)
 
-A detective game that teaches you to query data. The game master gives you a case. You write SQL to crack it. The game runs your query on real data in **Zetaris**, checks your answer against the data, and when you're wrong it shows you the evidence: the rows you shouldn't have, the rows you're missing, the column that doesn't line up. A coach running on **NVIDIA Nemotron** (through **Meterless Nightshift**) turns that evidence into a hint, and a critic makes sure the hint never gives the answer away. Once you've cracked the case, you have to explain why your query proves it. The game remembers what you got stuck on, using the **Meterless H-MEM** engine, and aims the next case at it.
+A detective game that teaches you to query data. The game master gives you a case. You write SQL to crack it. The game runs your query on real data in **Zetaris**, checks your answer against the data, and when you're wrong it shows you the evidence: the rows you shouldn't have, the rows you're missing, the column that doesn't line up. Your partner, **Nemo**, is a hard-boiled 1940s detective running on **NVIDIA Nemotron** (through **Meterless Nightshift**). Nemo reads that evidence and has a hint ready, for a price in points, and a critic makes sure the hint never gives the answer away. Once you've cracked the case, you have to explain why your query proves it. The game remembers what you got stuck on, using the **Meterless H-MEM** engine, and aims the next case at it.
 
 Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026), **Track 02: The Agent That Can Explain Why.** No verdict comes from the model's opinion. Every verdict is a comparison of two result sets on live data, and it comes with the rows that prove it.
 
@@ -62,24 +62,25 @@ npm start                     # then open http://localhost:4321
 ## Playing
 
 1. **Next case** opens a case. The validator checks it against the data first; the trace at the bottom shows each check.
-2. Write a query and run it (Ctrl+Enter). If it's wrong, the **Evidence** panel shows what doesn't match and the **Coach** gives a hint. Hints get more specific with each attempt: a nudge, then the concept, then a skeleton with blanks.
-3. When your result matches, explain **why** your query proves it. The coach judges the explanation, and the case closes with the reference query revealed.
-4. **Memory** lists what the game has learned about you. Click a note to see its H-MEM trust ledger.
-5. **Design a case** asks Nemotron for a new case aimed at your weakest skill. It only reaches you after passing the validator on Zetaris.
+2. Write a query and run it (Ctrl+Enter). If it's wrong, the **Evidence** panel shows what doesn't match. Nemo has already looked at your attempt; **Ask Nemo** opens the hint for 15 points. Hints get more specific each time: a nudge, then the concept, then a skeleton with blanks.
+3. When your result matches, explain **why** your query proves it. Nemo judges the explanation, the case is stamped closed, and the reference query is revealed.
+4. **Points:** a case is worth 100 x its level; each wrong attempt costs 20 and each hint 15; a solid explanation earns 50; solving cases without hints builds a streak bonus. Ranks go from Rookie through Gumshoe, Sleuth and Inspector to Chief Inspector.
+5. **Memory** lists what the game has learned about you. Click a note to see its H-MEM trust ledger.
+6. **Design a case** asks Nemotron for a new case aimed at your weakest skill. It only reaches you after passing the validator on Zetaris.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `npm start` | Runs the game on http://localhost:4321 |
-| `npm test` | 42 unit and integration tests; no services needed |
+| `npm test` | 45 unit and integration tests; no services needed |
 | `npm run typecheck` | TypeScript check |
 | `npm run smoke` | Checks Zetaris and Nightshift together and records their replies in `fixtures/recorded` |
 | `npm run record:schema` | Records the sample databases' tables, columns and a few rows |
 | `npm run validate:cases` | Puts every seed case through the validator against your Zetaris |
 | `npm run conformance:hmem` | Runs the H-MEM conformance suite against the vendored engine |
 
-Every agent step is also appended to `.data/trace.jsonl`; player memory lives in `.data/memory`.
+Every agent step is also appended to `.data/trace.jsonl`. Player memory lives in `.data/memory`, the score in `.data/score.json`, and checked case answers in `.data/answers.json` (so a case opens instantly after its first check; `npm run validate:cases` fills it). Delete `.data` to start a fresh detective.
 
 ## Project layout
 
