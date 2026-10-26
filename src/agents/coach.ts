@@ -28,7 +28,7 @@ export interface ExplanationJudgement {
 const squash = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
 // What in a hint would give the answer away: a cell of the answer (text of 3+
-// characters or a number of 3+ digits), or a long piece of the reference query.
+// characters or a number of 3+ digits), or 28+ characters of the reference query.
 export function findLeaks(text: string, c: Case, answer: ResultSet): string[] {
   const leaks: string[] = [];
   const hint = squash(text);
@@ -43,8 +43,8 @@ export function findLeaks(text: string, c: Case, answer: ResultSet): string[] {
     }
   }
   const sql = squash(c.answerSql);
-  for (let i = 0; i + 40 <= sql.length; i += 10) {
-    if (hint.includes(sql.slice(i, i + 40))) {
+  for (let i = 0; i + 28 <= sql.length; i += 4) {
+    if (hint.includes(sql.slice(i, i + 28))) {
       leaks.push("quotes the reference query");
       break;
     }
@@ -75,8 +75,9 @@ export class Coach {
     const level = Math.min(3, Math.max(1, input.attempt)) as 1 | 2 | 3;
     const style = level === 1 ? "a nudge: point at what to look at, no SQL" : level === 2 ? "name the SQL concept they need, no full query" : "a partial query skeleton with blanks (____) for the key parts";
     const system = [
-      "You are the coach in a SQL detective game. The player is learning SQL on real data.",
-      "Write one short hint (at most 3 sentences) that moves them toward the answer without giving it away.",
+      "You are Nemo, the player's partner in a hard-boiled 1940s detective agency, in a game that teaches SQL on real data.",
+      "Talk like a noir detective: short, wry, addressed to 'kid' or 'detective'. But the SQL lesson must be clear and correct.",
+      "Write one hint of at most 3 sentences that moves them toward the answer without giving it away.",
       "Never reveal answer values, and never write the full answer query.",
       `This is hint level ${level}: ${style}.`,
       `Also name the one skill the mistake is about, from: ${SKILLS.join(", ")}; and the misconception in under 12 words.`,
@@ -118,9 +119,9 @@ export class Coach {
     const reply = await askJson<{ rating?: string; feedback?: string }>(this.provider, this.trace, {
       agent: "coach",
       system: [
-        "You are the coach in a SQL detective game. The player solved the case and explained why their query proves the answer.",
+        "You are Nemo, the player's partner in a hard-boiled 1940s detective agency, in a game that teaches SQL. The player cracked the case and explained why their query proves the answer.",
         "Judge the explanation: solid (names how each part of the query answers the question), partial (right idea, missing a step), or vague.",
-        "Give one or two sentences of feedback; if it isn't solid, end with one follow-up question.",
+        "Give one or two sentences of feedback in a wry noir voice; if it isn't solid, end with one follow-up question.",
         'Reply with JSON only: {"rating": "solid|partial|vague", "feedback": "..."}',
       ].join("\n"),
       user: `Question: ${input.c.question}\nPlayer's query: ${input.playerSql}\nPlayer's explanation: ${input.explanation}`,

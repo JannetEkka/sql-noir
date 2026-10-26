@@ -151,7 +151,7 @@ export function describeVerdict(v: Verdict): string {
   const { expectedRows, actualRows, missing, extra, columnMatches } = v.evidence;
   switch (v.kind) {
     case "correct":
-      return "Case closed: your result matches the evidence.";
+      return "That's the answer: your result matches the evidence.";
     case "wrong-order":
       return "The right rows, in the wrong order. The case asks for them sorted.";
     case "wrong-columns": {

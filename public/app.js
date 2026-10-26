@@ -1,7 +1,17 @@
 // SQL Noir in the browser: talks to the game's JSON API and draws the case,
-// the evidence, the coach's hints, H-MEM memory and the agent trace.
+// the evidence, Nemo's hints, the score, H-MEM memory and the agent trace.
 const $ = (id) => document.getElementById(id);
 let traceSince = 0;
+let shownCaseId = null;
+let lastTotal = 0;
+
+const WAITING = {
+  next: ["Pulling the case file…", "Checking the evidence holds up on Zetaris…", "Dusting the tables for prints…"],
+  query: ["Running it on Zetaris…", "Searching the archives…", "Comparing it with the evidence…", "Nemo is reading your work…"],
+  hint: ["Nemo leans in…"],
+  explain: ["Nemo is reading your report…", "Filing the paperwork…"],
+  design: ["Nemo is writing up a new case…", "The validator is checking it on Zetaris…", "Sending it back for a rewrite…", "Still working the case…"],
+};
 
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -23,33 +33,101 @@ function drawTable(el, set) {
     .join("")}</tbody>`;
 }
 
-function setBusy(on, note = "") {
-  for (const b of document.querySelectorAll("button")) b.disabled = on;
-  $("run-note").textContent = note;
+function toast(text) {
+  const t = $("toast");
+  t.hidden = true;
+  void t.offsetWidth;
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.hidden = true), 3300);
+}
+
+// A spinner, a running clock and a line that changes while the agents work.
+function startBusy(kind) {
+  for (const b of document.querySelectorAll("button")) b.disabled = true;
+  const lines = WAITING[kind] ?? ["Working…"];
+  const started = Date.now();
+  let i = 0;
+  $("busy").hidden = false;
+  $("busy-text").textContent = lines[0];
+  $("busy-time").textContent = "";
+  const timer = setInterval(() => {
+    const secs = Math.round((Date.now() - started) / 1000);
+    $("busy-time").textContent = `${secs}s`;
+    if (secs > 0 && secs % 4 === 0) $("busy-text").textContent = lines[++i % lines.length];
+  }, 1000);
+  return () => {
+    clearInterval(timer);
+    $("busy").hidden = true;
+    for (const b of document.querySelectorAll("button")) b.disabled = false;
+  };
+}
+
+function typewrite(el, text) {
+  clearInterval(el.typing);
+  el.textContent = "";
+  el.classList.add("typing");
+  let i = 0;
+  el.typing = setInterval(() => {
+    el.textContent = text.slice(0, (i += 2));
+    if (i >= text.length) {
+      clearInterval(el.typing);
+      el.classList.remove("typing");
+    }
+  }, 18);
+}
+
+function drawScore(score) {
+  if (!score) return;
+  $("rank").textContent = score.rank.name;
+  $("pts").textContent = score.total;
+  $("bar").style.width = `${Math.round(score.rank.progress * 100)}%`;
+  $("score").title = score.rank.next ? `${score.rank.toNext} pts to ${score.rank.next}` : "Top rank";
+  $("streak").textContent = score.streak > 1 ? `streak ${score.streak}` : "";
+  if (score.total !== lastTotal) {
+    $("score").classList.remove("bump");
+    void $("score").offsetWidth;
+    $("score").classList.add("bump");
+    lastTotal = score.total;
+  }
 }
 
 function drawState(s) {
   const g = s.game;
+  drawScore(g.score);
   $("case-empty").hidden = !!g.case;
   $("case").hidden = !g.case;
+  $("stamp").hidden = !g.case || g.phase !== "closed";
   if (g.case) {
+    if (g.case.id !== shownCaseId) {
+      shownCaseId = g.case.id;
+      typewrite($("case-story"), g.case.story);
+    }
     $("case-title").textContent = g.case.title;
-    $("case-story").textContent = g.case.story;
     $("case-question").textContent = g.case.question;
-    $("case-level").textContent = `Level ${g.case.level}`;
+    $("case-level").textContent = `Level ${g.case.level} · worth ${100 * g.case.level}`;
     $("case-skills").textContent = g.case.skills.join(" · ");
-    $("case-origin").textContent = g.case.origin === "designer" ? "designed by Nemotron, checked on Zetaris" : "seed case";
+    $("case-origin").textContent = g.case.origin === "designer" ? "written by Nemo, checked on Zetaris" : "seed case";
     $("case-why").textContent = g.pickReason ? `Why this case: ${g.pickReason}.` : "";
     $("recalled").hidden = !g.recalled?.length;
     $("recalled-list").innerHTML = (g.recalled ?? []).map((n) => `<li>${esc(n.content)} <span class="muted">(${n.relevance})</span></li>`).join("");
-    $("hints").innerHTML = (g.hints ?? []).map((h) => `<li>${esc(h.text)}<span class="src">level ${h.level} · ${h.source === "coach" ? "coach, approved by the critic" : "from the case file"}</span></li>`).join("");
+    $("hints").innerHTML = (g.hints ?? []).map((h) => `<li>${esc(h.text)}<span class="src">level ${h.level} · ${h.source === "coach" ? "Nemo, cleared by the critic" : "from the case file"}</span></li>`).join("");
+    const investigating = g.phase === "investigating";
+    $("btn-hint").hidden = !investigating;
+    $("btn-hint").textContent = g.hintReady ? "Nemo has a lead. Ask for it (-15 pts)" : "Ask Nemo for a hint (-15 pts)";
+    $("hint-note").textContent = investigating && g.hintReady ? "Nemo looked at your last attempt." : "";
     $("explain").hidden = g.phase !== "explaining";
     $("reveal").hidden = g.phase !== "closed";
     if (g.phase === "closed" && g.reveal) {
-      $("judgement").innerHTML = g.judgement ? `Explanation: <b>${esc(g.judgement.rating)}</b>. ${esc(g.judgement.feedback)}` : "";
+      $("award").textContent = g.award ? `+${g.award.points} pts` : "";
+      $("breakdown").innerHTML = (g.award?.breakdown ?? []).map((b) => `<li>${esc(b)}</li>`).join("");
+      $("judgement").innerHTML = g.judgement ? `Nemo on your report: <b>${esc(g.judgement.rating)}</b>. ${esc(g.judgement.feedback)}` : "";
       $("answer-sql").textContent = g.reveal.answerSql;
       drawTable($("answer"), g.reveal.answer);
     }
+  } else {
+    $("btn-hint").hidden = true;
   }
   $("memory").innerHTML = s.memory.length
     ? s.memory.map((m) => `<li data-id="${esc(m.id)}">${esc(m.content)}<span class="conf">${m.confidence}</span></li>`).join("")
@@ -96,8 +174,9 @@ async function pollStatus() {
   } catch {}
 }
 
-async function act(path, body, note) {
-  setBusy(true, note);
+async function act(kind, path, body) {
+  const stop = startBusy(kind);
+  const tick = setInterval(pollTrace, 1000);
   try {
     const r = await api(path, body);
     drawState(r);
@@ -105,7 +184,8 @@ async function act(path, body, note) {
   } catch (err) {
     drawVerdict({ error: err.message });
   } finally {
-    setBusy(false);
+    clearInterval(tick);
+    stop();
     pollTrace();
   }
 }
@@ -113,19 +193,31 @@ async function act(path, body, note) {
 $("btn-next").onclick = async () => {
   $("verdict").hidden = true;
   $("result").innerHTML = "";
+  $("sql").value = "";
+  $("why").value = "";
   $("evidence").innerHTML = '<span class="muted">Run a query to see how it compares with the answer.</span>';
-  const r = await act("/api/next", {}, "Checking the case against the data…");
-  if (r && !r.ok) drawVerdict({ refused: "No open cases left. Press Design a case for a new one." });
+  const r = await act("next", "/api/next", {});
+  if (r && !r.ok) drawVerdict({ refused: "No open cases left. Press Design a case and Nemo will write you a new one." });
 };
-$("btn-design").onclick = () => act("/api/design", {}, "Nemotron is drafting a case; the validator will check it on Zetaris…");
+$("btn-design").onclick = async () => {
+  const r = await act("design", "/api/design", {});
+  if (r && !r.ok) drawVerdict({ refused: `Nemo couldn't get a case past the validator this time: ${r.problem ?? "try again"}.` });
+};
 $("btn-run").onclick = async () => {
-  const r = await act("/api/query", { sql: $("sql").value }, "Running on Zetaris…");
+  const r = await act("query", "/api/query", { sql: $("sql").value });
   if (r) {
     drawVerdict(r);
     drawTable($("result"), r.result);
+    if (r.verdict?.correct) toast("You've got it. Now explain it.");
   }
 };
-$("btn-explain").onclick = () => act("/api/explain", { text: $("why").value }, "The coach is reading your explanation…");
+$("btn-hint").onclick = () => act("hint", "/api/hint", {});
+$("btn-explain").onclick = async () => {
+  const before = $("rank").textContent;
+  const r = await act("explain", "/api/explain", { text: $("why").value });
+  const award = r?.game?.award;
+  if (award) toast(award.rankAfter !== before && award.rankAfter !== award.rankBefore ? `Promoted to ${award.rankAfter}! +${award.points} pts` : `Case closed. +${award.points} pts`);
+};
 $("sql").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("btn-run").click();
 });
@@ -140,8 +232,11 @@ $("memory").addEventListener("click", async (e) => {
     .join("<br>")}`;
 });
 
-api("/api/state").then(drawState).catch(() => {});
+api("/api/state").then((s) => {
+  lastTotal = s.game.score?.total ?? 0;
+  drawState(s);
+}).catch(() => {});
 pollStatus();
 pollTrace();
-setInterval(pollTrace, 2000);
+setInterval(pollTrace, 3000);
 setInterval(pollStatus, 15000);

@@ -86,8 +86,12 @@ test("a full case: wrong answer, critic-checked hint, memory, right answer, expl
     const wrong = await game.submit("SELECT r_reason_desc, COUNT(*) AS n FROM TPCDS_DB.sr GROUP BY 1 ORDER BY n DESC LIMIT 1");
     assert.equal(wrong.verdict!.correct, false);
     assert.deepEqual(wrong.verdict!.evidence.missing, [], "answer rows stay hidden while the case is open");
-    assert.equal(wrong.hint!.source, "coach");
-    assert.match(wrong.hint!.text, /Counting rows/);
+    assert.equal(wrong.hintReady, true);
+    assert.equal(game.view().hints!.length, 0, "the hint stays sealed until asked for");
+    const asked = game.revealHint();
+    assert.ok("hint" in asked);
+    assert.equal(asked.hint.source, "coach");
+    assert.match(asked.hint.text, /Counting rows/);
     assert.ok(trace.events.some((e) => e.agent === "critic" && e.action === "rejected hint"));
     assert.deepEqual(memory.weakSkills(), ["aggregate"]);
 
@@ -99,6 +103,10 @@ test("a full case: wrong answer, critic-checked hint, memory, right answer, expl
     assert.ok("judgement" in closed && closed.judgement.rating === "solid");
     const view = game.view() as any;
     assert.equal(view.reveal.answerSql, CASE.answerSql);
+    // Level 2 case: 200, one wrong attempt -20, one hint -15, solid +50.
+    assert.equal(view.award.points, 215);
+    assert.equal(view.score.total, 215);
+    assert.equal(view.score.rank.name, "Gumshoe");
     assert.deepEqual(memory.solvedCaseIds(), ["seed-t"]);
   } finally {
     await runtime.close();
@@ -111,9 +119,11 @@ test("without the model, the case's own hints keep the game going", async () => 
   const provider = new MeterlessProvider({ baseUrl: "http://127.0.0.1:9/v1", token: "tok" });
   const game = new Game({ run, provider, trace, memory, cases: [CASE] });
   await game.next();
-  const wrong = await game.submit("SELECT r_reason_desc, COUNT(*) AS n FROM TPCDS_DB.sr GROUP BY 1 ORDER BY n DESC LIMIT 1");
-  assert.equal(wrong.hint!.source, "case");
-  assert.equal(wrong.hint!.text, "Group the returns by reason.");
+  await game.submit("SELECT r_reason_desc, COUNT(*) AS n FROM TPCDS_DB.sr GROUP BY 1 ORDER BY n DESC LIMIT 1");
+  const asked = game.revealHint();
+  assert.ok("hint" in asked);
+  assert.equal(asked.hint.source, "case");
+  assert.equal(asked.hint.text, "Group the returns by reason.");
 });
 
 test("memory recalls past mistakes for a related case, and feedback raises confidence", () => {
@@ -128,4 +138,31 @@ test("memory recalls past mistakes for a related case, and feedback raises confi
   again.markHelpful([note.id]);
   assert.ok(again.notes()[0].confidence > before);
   assert.deepEqual(again.history(note.id).map((h) => h.action).slice(0, 1), ["create"]);
+});
+
+test("a case checked once opens without running its query again", async () => {
+  const { AnswerCache } = await import("../src/game/answer-cache.ts");
+  const answers = new AnswerCache(path.join(tmp(), "answers.json"));
+  let queries = 0;
+  const counting: Runner = async (sql) => {
+    queries++;
+    return run(sql);
+  };
+  const provider = new MeterlessProvider({ baseUrl: "http://127.0.0.1:9/v1", token: "tok" });
+  const first = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers });
+  await first.next();
+  const afterFirst = queries;
+  assert.ok(afterFirst >= 3, "validation runs the reference query");
+  const second = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers });
+  await second.next();
+  assert.equal(queries, afterFirst);
+});
+
+test("scoring: levels, mistakes, hints, explanation and streak", async () => {
+  const { scoreCase, rankFor } = await import("../src/game/score.ts");
+  assert.equal(scoreCase({ level: 1, attempts: 1, hintsShown: 0, rating: "solid", streak: 1 }).points, 150);
+  assert.equal(scoreCase({ level: 3, attempts: 4, hintsShown: 2, rating: "vague", streak: 0 }).points, 210);
+  assert.equal(scoreCase({ level: 1, attempts: 9, hintsShown: 5, rating: "vague", streak: 0 }).points, 25, "never below a quarter of the case");
+  assert.equal(scoreCase({ level: 1, attempts: 1, hintsShown: 0, rating: "partial", streak: 3 }).points, 150);
+  assert.deepEqual([rankFor(0).name, rankFor(499).name, rankFor(500).name, rankFor(5000).name], ["Rookie", "Gumshoe", "Sleuth", "Chief Inspector"]);
 });

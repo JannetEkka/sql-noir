@@ -11,6 +11,8 @@ import { MeterlessProvider, meterlessConfigFromEnv } from "./meterless/provider.
 import { Trace } from "./game/trace.ts";
 import { PlayerMemory } from "./game/memory.ts";
 import { Game, schemaText } from "./game/engine.ts";
+import { Scoreboard } from "./game/score.ts";
+import { AnswerCache } from "./game/answer-cache.ts";
 import type { Runner, Skill } from "./game/cases.ts";
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
@@ -69,6 +71,7 @@ export function createApp(deps: AppDeps): http.Server {
             return send(200, { ok, ...state() });
           }
           if (url.pathname === "/api/query") return send(200, { ...(await game.submit(String(body.sql ?? ""))), ...state() });
+          if (url.pathname === "/api/hint") return send(200, { ...game.revealHint(), ...state() });
           if (url.pathname === "/api/explain") return send(200, { ...(await game.explain(String(body.text ?? ""))), ...state() });
           if (url.pathname === "/api/design") return send(200, { ...(await game.design(body.skill as Skill | undefined)), ...state() });
         } finally {
@@ -94,7 +97,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const r = await zetaris.runSql(sql, { limit: 200 });
     return { columns: r.columns, rows: r.rows };
   };
-  const game = new Game({ run, provider, trace, memory, schema: schemaText() });
+  const game = new Game({
+    run,
+    provider,
+    trace,
+    memory,
+    schema: schemaText(),
+    score: new Scoreboard(path.join(".data", "score.json")),
+    answers: new AnswerCache(path.join(".data", "answers.json")),
+  });
   const checkZetaris = async () => {
     try {
       await zetaris.runSql("SELECT 1");

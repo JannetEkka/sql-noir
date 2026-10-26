@@ -14,6 +14,8 @@ import type { Trace } from "./trace.ts";
 import { Coach, type ExplanationJudgement, type Hint } from "../agents/coach.ts";
 import { designCase } from "../agents/designer.ts";
 import { SEED_CASES } from "./seed-cases.ts";
+import { AnswerCache } from "./answer-cache.ts";
+import { HINT_COST, Scoreboard, type Award } from "./score.ts";
 
 type Phase = "investigating" | "explaining" | "closed";
 
@@ -27,6 +29,9 @@ interface Current {
   lastSql: string | null;
   pickReason: string;
   judgement: ExplanationJudgement | null;
+  // The coach's hint for the last wrong attempt, kept until the player asks.
+  pendingHint: Hint | null;
+  award: Award | null;
 }
 
 export interface SubmitResult {
@@ -35,7 +40,7 @@ export interface SubmitResult {
   result?: ResultSet;
   verdict?: Verdict;
   message?: string;
-  hint?: Hint;
+  hintReady?: boolean;
 }
 
 const SHOW_ROWS = 50;
@@ -80,28 +85,48 @@ export class Game {
   readonly cases: Case[];
   private readonly coach: Coach;
   private readonly broken = new Set<string>();
+  readonly score: Scoreboard;
+  private readonly answers: AnswerCache;
   current: Current | null = null;
 
   constructor(
-    private readonly deps: { run: Runner; provider: MeterlessProvider; trace: Trace; memory: PlayerMemory; cases?: Case[]; schema?: string },
+    private readonly deps: {
+      run: Runner;
+      provider: MeterlessProvider;
+      trace: Trace;
+      memory: PlayerMemory;
+      cases?: Case[];
+      schema?: string;
+      score?: Scoreboard;
+      answers?: AnswerCache;
+    },
   ) {
     this.cases = [...(deps.cases ?? SEED_CASES)];
     this.coach = new Coach(deps.provider, deps.trace);
+    this.score = deps.score ?? new Scoreboard();
+    this.answers = deps.answers ?? new AnswerCache();
   }
 
   private async open(c: Case, pickReason: string): Promise<boolean> {
     const { trace } = this.deps;
-    trace.log("game master", "checking the case against the data", `"${c.title}"`);
-    const validation = await validateCase(c, this.deps.run);
-    const failed = validation.checks.find((check) => !check.ok);
-    if (!validation.ok) {
-      this.broken.add(c.id);
-      trace.log("validator", "set the case aside", `"${c.title}": ${failed?.name}: ${failed?.detail}`);
-      return false;
+    let answer = this.answers.get(c);
+    if (answer) {
+      trace.log("validator", "case was checked on this machine before", `"${c.title}": using its stored answer`);
+    } else {
+      trace.log("game master", "checking the case against the data", `"${c.title}"`);
+      const validation = await validateCase(c, this.deps.run);
+      const failed = validation.checks.find((check) => !check.ok);
+      if (!validation.ok) {
+        this.broken.add(c.id);
+        trace.log("validator", "set the case aside", `"${c.title}": ${failed?.name}: ${failed?.detail}`);
+        return false;
+      }
+      trace.log("validator", "case is fair", `"${c.title}": ${validation.checks.map((check) => check.name).join(", ")} all pass`);
+      answer = validation.answer!;
+      this.answers.set(c, answer);
     }
-    trace.log("validator", "case is fair", `"${c.title}": ${validation.checks.map((check) => check.name).join(", ")} all pass`);
     const recall = this.deps.memory.recall(c);
-    this.current = { c, answer: validation.answer!, attempts: 0, hints: [], recall, phase: "investigating", lastSql: null, pickReason, judgement: null };
+    this.current = { c, answer, attempts: 0, hints: [], recall, phase: "investigating", lastSql: null, pickReason, judgement: null, pendingHint: null, award: null };
     return true;
   }
 
@@ -151,10 +176,24 @@ export class Game {
       return { result: shown, verdict, message: `${describeVerdict(verdict)} Now tell me: why does your query prove it?` };
     }
     cur.attempts++;
-    const hint = await this.coach.hint({ c: cur.c, verdict, answer: cur.answer, playerSql: statement, attempt: cur.attempts, memoryNotes: cur.recall.notes.map((n) => n.content) });
-    cur.hints.push(hint);
+    // The coach diagnoses every wrong attempt (that's what memory learns from),
+    // but the hint stays sealed until the player pays to open it.
+    const hint = await this.coach.hint({ c: cur.c, verdict, answer: cur.answer, playerSql: statement, attempt: cur.hints.length + 1, memoryNotes: cur.recall.notes.map((n) => n.content) });
+    cur.pendingHint = hint;
     if (hint.skill) this.deps.memory.rememberMistake(cur.c, hint.skill, hint.misconception ?? describeVerdict(verdict));
-    return { result: shown, verdict: redact(verdict), message: describeVerdict(verdict), hint };
+    return { result: shown, verdict: redact(verdict), message: describeVerdict(verdict), hintReady: true };
+  }
+
+  // The player asks the partner for help, at a cost in points. Before any
+  // attempt, the case's own first hint is all there is.
+  revealHint(): { hint: Hint; cost: number } | { error: string } {
+    const cur = this.current;
+    if (!cur || cur.phase !== "investigating") return { error: "There's no open case to ask about." };
+    const hint: Hint = cur.pendingHint ?? { text: cur.c.hints[Math.min(cur.hints.length, cur.c.hints.length - 1)] ?? "Read the question again, one condition at a time.", level: 1, source: "case", skill: null, misconception: null };
+    cur.pendingHint = null;
+    cur.hints.push(hint);
+    this.deps.trace.log("partner", "gave a hint", `level ${hint.level}, cost ${HINT_COST} points`);
+    return { hint, cost: HINT_COST };
   }
 
   async explain(text: string): Promise<{ judgement: ExplanationJudgement; answer: ResultSet; answerSql: string } | { error: string }> {
@@ -163,6 +202,9 @@ export class Game {
     const judgement = await this.coach.judgeExplanation({ c: cur.c, playerSql: cur.lastSql ?? "", explanation: text });
     cur.judgement = judgement;
     cur.phase = "closed";
+    cur.award = this.score.award({ level: cur.c.level, attempts: cur.attempts, hintsShown: cur.hints.length, rating: judgement.rating });
+    this.deps.trace.log("game master", "awarded points", `${cur.award.points}: ${cur.award.breakdown.join(", ")}`);
+    if (cur.award.rankAfter !== cur.award.rankBefore) this.deps.trace.log("game master", "promotion", `${cur.award.rankBefore} to ${cur.award.rankAfter}`);
     this.deps.memory.rememberSolved(cur.c, cur.attempts, judgement.rating);
     if (cur.recall.notes.length) this.deps.memory.markHelpful(cur.recall.notes.map((n) => n.id));
     this.deps.trace.log("game master", "case closed", `"${cur.c.title}" in ${cur.attempts} attempt(s), explanation ${judgement.rating}`);
@@ -191,13 +233,16 @@ export class Game {
   // until the case is closed.
   view() {
     const cur = this.current;
-    if (!cur) return { case: null };
+    if (!cur) return { case: null, score: this.score.view() };
     const closed = cur.phase === "closed";
     return {
       case: { id: cur.c.id, title: cur.c.title, story: cur.c.story, question: cur.c.question, level: cur.c.level, skills: cur.c.skills, origin: cur.c.origin, orderMatters: cur.c.orderMatters },
       phase: cur.phase,
       attempts: cur.attempts,
       hints: cur.hints,
+      hintReady: cur.pendingHint !== null,
+      award: cur.award,
+      score: this.score.view(),
       pickReason: cur.pickReason,
       recalled: cur.recall.notes,
       judgement: cur.judgement,

@@ -13,6 +13,12 @@
       <span class="pill" id="st-zetaris">Zetaris …</span>
       <span class="pill" id="st-meterless">Nightshift …</span>
     </div>
+    <div class="score" id="score" title="Points per case: 100 x level, minus 20 per wrong attempt and 15 per hint, plus a bonus for a clear explanation and for a streak of cases solved without hints">
+      <span class="rank" id="rank">Rookie</span>
+      <span class="pts"><b id="pts">0</b> pts</span>
+      <span class="bar"><span id="bar"></span></span>
+      <span class="streak" id="streak"></span>
+    </div>
     <div class="actions">
       <button id="btn-next">Next case</button>
       <button id="btn-design" class="ghost" title="Nemotron drafts a case for your weakest skill; the validator checks it on Zetaris">Design a case</button>
@@ -21,6 +27,7 @@
 
   <main class="grid">
     <section class="panel case" aria-label="Case file">
+      <div class="stamp" id="stamp" hidden>Case closed</div>
       <h2>Case file</h2>
       <div id="case-empty" class="muted">Press <b>Next case</b> to get your first case.</div>
       <div id="case" hidden>
@@ -39,7 +46,8 @@
     <section class="panel work" aria-label="Your query">
       <h2>Your query <small>Ctrl+Enter to run</small></h2>
       <textarea id="sql" spellcheck="false" placeholder="SELECT ... FROM TPCDS_DB.store ..."></textarea>
-      <div class="row"><button id="btn-run">Run on Zetaris</button><span id="run-note" class="muted small"></span></div>
+      <div class="row"><button id="btn-run">Run on Zetaris</button></div>
+      <div class="busy" id="busy" hidden><span class="spinner"></span><span id="busy-text">Working…</span><span class="muted" id="busy-time"></span></div>
       <div id="verdict" class="verdict" hidden></div>
       <div class="table-wrap"><table id="result"></table></div>
       <div id="explain" class="explain" hidden>
@@ -48,7 +56,8 @@
         <button id="btn-explain">Close the case</button>
       </div>
       <div id="reveal" class="reveal" hidden>
-        <h4>Case closed</h4>
+        <h4>Case closed <span class="award" id="award"></span></h4>
+        <ul id="breakdown" class="breakdown"></ul>
         <p id="judgement"></p>
         <p class="muted small">The reference query:</p>
         <pre id="answer-sql"></pre>
@@ -59,8 +68,10 @@
     <section class="panel side" aria-label="Evidence and coach">
       <h2>Evidence</h2>
       <div id="evidence" class="muted">Run a query to see how it compares with the answer.</div>
-      <h2>Coach</h2>
+      <h2>Your partner, Nemo <small>Nemotron via Nightshift</small></h2>
       <ol id="hints" class="hints"></ol>
+      <button id="btn-hint" class="ghost" hidden>Ask Nemo for a hint (-15 pts)</button>
+      <p id="hint-note" class="muted small"></p>
       <h2>Memory <small>H-MEM</small></h2>
       <ul id="memory" class="memory"><li class="muted">Nothing yet.</li></ul>
       <div id="ledger" class="ledger" hidden></div>
@@ -71,6 +82,7 @@
     <h2>Agent trace <small>every step, in order</small></h2>
     <ol id="trace"></ol>
   </section>
+  <div class="toast" id="toast" hidden></div>
   <script src="/app.js"></script>
 </body>
 </html>

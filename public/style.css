@@ -79,3 +79,32 @@ pre { background: #101114; border: 1px solid var(--line); border-radius: 6px; pa
 #trace .who { color: var(--accent); }
 #trace .what { color: var(--ink); }
 #trace .what span { color: var(--muted); }
+
+/* Score and rank */
+.score { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.score .rank { font: 700 14px var(--type); color: var(--accent); }
+.score .pts b { font-size: 16px; }
+.score .bar { width: 90px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.score .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.8s ease; }
+.score .streak { color: var(--warn); }
+.score.bump .pts b { animation: bump 0.6s ease; }
+@keyframes bump { 50% { transform: scale(1.5); color: var(--accent); } }
+
+/* Waiting */
+.busy { display: flex; align-items: center; gap: 10px; margin: 8px 0; color: var(--accent); font-family: var(--type); }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Case closed */
+.case { position: relative; }
+.stamp { position: absolute; top: 118px; right: 16px; transform: rotate(-12deg); border: 4px double #c0392b; color: #c0392b; font: 700 26px var(--type); text-transform: uppercase; padding: 6px 14px; letter-spacing: 0.08em; opacity: 0.9; pointer-events: none; animation: stamp 0.35s cubic-bezier(.2,1.6,.4,1); }
+@keyframes stamp { from { transform: rotate(-12deg) scale(2.6); opacity: 0; } to { transform: rotate(-12deg) scale(1); opacity: 0.9; } }
+.award { color: var(--accent); font-family: var(--type); margin-left: 6px; }
+.breakdown { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+#btn-hint { margin-bottom: 6px; }
+
+/* Toast */
+.toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); background: var(--accent); color: #111; font: 700 18px var(--type); padding: 12px 22px; border-radius: 8px; box-shadow: 0 8px 30px #0008; z-index: 10; animation: toast 3.2s ease forwards; }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -20px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.typing::after { content: "▌"; color: var(--accent); animation: blink 0.8s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
