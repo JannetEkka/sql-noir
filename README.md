@@ -32,6 +32,7 @@ The agents work in loops, not a chain: the designer and the validator go back an
 | **Meterless H-MEM** (engine) | The player's memory. Mistakes and solved cases are written as H-MEM records with a source and confidence; before each case the game recalls through H-MEM retrieval; a recalled note that helped gets `feedback("helpful")`; clicking a memory shows its trust-ledger history | `src/game/memory.ts`, engine in `vendor/meterless/hmem` |
 | **Meterless Runtime / Nightshift** | The AI provider for every model call, implemented to the Power prompt's contract (bearer token, `meterless-app`, `meterless-scope`, status from `GET /v1/models`, retries) | `src/meterless/provider.ts` |
 | **NVIDIA Nemotron** | Runs behind Nightshift: Nemotron 3.5 Lightning 30B and Nemotron 3 Super 120B lanes. The trace shows which model answered each call | Nightshift lanes; `src/agents/` |
+| **Cursor** | Where the game meets the real stack: on Jannet's laptop each change is pulled, tested (`npm test`, `npm run smoke`, `npm run validate:cases`), started from Cursor's terminal and played against the local Zetaris and Nightshift | |
 
 **Proof the engine works:** `npm run conformance:hmem` runs H-MEM's own conformance suite against the engine this game uses (13/13), and `npm test` includes a test where memory persists across sessions, recalls a past mistake for a related case, and raises a note's confidence after it helped.
 
