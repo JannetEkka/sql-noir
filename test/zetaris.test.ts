@@ -37,6 +37,16 @@ test("a 401 explains how to get a new key", async () => {
   await assert.rejects(client.runSql("SELECT 1"), (err: ZetarisError) => err.status === 401 && /API Tokens/.test(err.message));
 });
 
+test("a query Zetaris can't run gives Spark's message, without the org-id tip", async () => {
+  const msg = "[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column or function parameter with name `no_such_column` cannot be resolved. SQLSTATE: 42703; line 1 pos 7";
+  const client = new ZetarisClient({ ...config, fetchImpl: fakeFetch(400, { msg }).impl });
+  await assert.rejects(client.runSql("SELECT no_such_column FROM TPCDS_DB.reason"), (err: ZetarisError) => {
+    assert.match(err.message, /^Zetaris could not run the query: \[UNRESOLVED_COLUMN/);
+    assert.doesNotMatch(err.message, /SQLSTATE|ORG_ID/);
+    return true;
+  });
+});
+
 test("an error reported inside a 200 reply is raised", async () => {
   const client = new ZetarisClient({ ...config, fetchImpl: fakeFetch(200, { error: "Table not found: TPCDS_DB.nope" }).impl });
   await assert.rejects(client.runSql("SELECT * FROM TPCDS_DB.nope"), /Table not found/);

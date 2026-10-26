@@ -109,13 +109,25 @@ export class ZetarisClient {
     }
     const text = await response.text();
     if (!response.ok) {
+      // A query Zetaris can't run comes back as a 400 with {"msg": "..."}:
+      // that message is the useful part, for the player and for the coach.
+      let reported: string | null = null;
+      try {
+        const body = JSON.parse(text);
+        reported = typeof body?.msg === "string" ? body.msg : typeof body?.message === "string" ? body.message : typeof body?.error === "string" ? body.error : null;
+      } catch {
+        // not JSON; fall through to the raw text
+      }
+      if (reported && sql) {
+        throw new ZetarisError(`Zetaris could not run the query: ${reported.replace(/\s*SQLSTATE:.*$/s, "").slice(0, 400)}`, response.status, sql);
+      }
       const hint =
         response.status === 401
           ? " The API key was rejected: create a new one under Management -> API Tokens and update ZETARIS_API_KEY."
-          : response.status === 400
+          : response.status === 400 && /org|request/i.test(text)
             ? " Check ZETARIS_ORG_ID (1 on a local install)."
             : "";
-      throw new ZetarisError(`Zetaris returned HTTP ${response.status}: ${text.slice(0, 300)}${hint}`, response.status, sql);
+      throw new ZetarisError(`Zetaris returned HTTP ${response.status}: ${(reported ?? text).slice(0, 300)}${hint}`, response.status, sql);
     }
     try {
       return text ? JSON.parse(text) : null;
