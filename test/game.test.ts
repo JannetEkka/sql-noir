@@ -29,6 +29,8 @@ const CASE: Case = {
 
 // Answers the reference query (and its LIMIT 2 tie check) and two player attempts.
 const run: Runner = async (sql) => {
+  if (/^DESCRIBE/.test(sql)) return { columns: ["col_name", "data_type"], rows: [["r_reason_desc", "string"], ["q", "int"]] };
+  if (/LIMIT 3$/.test(sql)) return { columns: ["r_reason_desc", "q"], rows: [["Package was damaged", 3]] };
   if (/LIMIT 2$/.test(sql)) return { columns: ["r_reason_desc", "items"], rows: [["Did not like the warranty", 5120], ["Package was damaged", 4800]] };
   if (sql === CASE.answerSql || /SUM\(sr_return_quantity\)/i.test(sql)) return { columns: ["r_reason_desc", "items"], rows: [["Did not like the warranty", 5120]] };
   if (/COUNT/i.test(sql)) return { columns: ["r_reason_desc", "n"], rows: [["Package was damaged", 990]] };
@@ -142,20 +144,32 @@ test("memory recalls past mistakes for a related case, and feedback raises confi
 
 test("a case checked once opens without running its query again", async () => {
   const { AnswerCache } = await import("../src/game/answer-cache.ts");
+  const { CaseFiles } = await import("../src/game/files.ts");
   const answers = new AnswerCache(path.join(tmp(), "answers.json"));
+  const filesPath = path.join(tmp(), "tables.json");
   let queries = 0;
   const counting: Runner = async (sql) => {
     queries++;
     return run(sql);
   };
   const provider = new MeterlessProvider({ baseUrl: "http://127.0.0.1:9/v1", token: "tok" });
-  const first = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers });
+  const first = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers, files: new CaseFiles(counting, filesPath) });
   await first.next();
   const afterFirst = queries;
   assert.ok(afterFirst >= 3, "validation runs the reference query");
-  const second = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers });
+  const second = new Game({ run: counting, provider, trace: new Trace(), memory: new PlayerMemory(new Trace(), tmp()), cases: [CASE], answers, files: new CaseFiles(counting, filesPath) });
   await second.next();
   assert.equal(queries, afterFirst);
+  const files = (second.view() as any).case.files;
+  assert.equal(files[0].table, "TPCDS_DB.r");
+  assert.deepEqual(files[0].columns, [{ name: "r_reason_desc", type: "string" }, { name: "q", type: "int" }]);
+  assert.equal(files[0].sample.rows.length, 1);
+});
+
+test("the case files list the tables a query names", async () => {
+  const { tablesIn } = await import("../src/game/files.ts");
+  assert.deepEqual(tablesIn("SELECT * FROM TPCDS_DB.store_sales ss JOIN tpcds_db.date_dim d ON 1=1 JOIN TPCDS_DB.store_sales x"), ["TPCDS_DB.store_sales", "TPCDS_DB.date_dim"]);
+  assert.deepEqual(tablesIn("SELECT Borough FROM NY_TAXI.taxi_zones"), ["NY_TAXI.taxi_zones"]);
 });
 
 test("scoring: levels, mistakes, hints, explanation and streak", async () => {

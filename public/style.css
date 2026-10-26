@@ -108,3 +108,14 @@ pre { background: #101114; border: 1px solid var(--line); border-radius: 6px; pa
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -20px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 .typing::after { content: "▌"; color: var(--accent); animation: blink 0.8s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* The case files */
+.files { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.files h4 { margin: 0 0 8px; font-size: 13px; }
+.file { margin-bottom: 10px; }
+.chip { display: inline-block; font: 12px var(--mono); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; margin: 2px 3px 2px 0; cursor: pointer; background: #101114; color: var(--ink); }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.table { color: var(--accent); border-color: #5a4a20; font-weight: 700; }
+.chip small { color: var(--muted); margin-left: 4px; }
+.file details { margin-top: 4px; font-size: 12px; }
+.file summary { cursor: pointer; color: var(--muted); }

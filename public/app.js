@@ -4,6 +4,7 @@ const $ = (id) => document.getElementById(id);
 let traceSince = 0;
 let shownCaseId = null;
 let lastTotal = 0;
+let tracePolling = false;
 
 const WAITING = {
   next: ["Pulling the case file…", "Checking the evidence holds up on Zetaris…", "Dusting the tables for prints…"],
@@ -78,6 +79,35 @@ function typewrite(el, text) {
   }, 18);
 }
 
+// Puts a table or column name into the query where the cursor is.
+function insertAtCursor(text) {
+  const box = $("sql");
+  const start = box.selectionStart ?? box.value.length;
+  const end = box.selectionEnd ?? start;
+  const before = box.value.slice(0, start);
+  const pad = before && !/\s$/.test(before) ? " " : "";
+  box.value = before + pad + text + box.value.slice(end);
+  const at = start + pad.length + text.length;
+  box.focus();
+  box.setSelectionRange(at, at);
+}
+
+function drawFiles(files) {
+  $("files").innerHTML = (files ?? [])
+    .map(
+      (f) => `<div class="file">
+        <span class="chip table" data-insert="${esc(f.table)}">${esc(f.table)}</span>
+        <div>${f.columns.map((c) => `<span class="chip" data-insert="${esc(c.name)}">${esc(c.name)}<small>${esc(c.type)}</small></span>`).join("") || '<span class="muted small">columns not available</span>'}</div>
+        ${f.sample?.rows?.length ? `<details><summary>${f.sample.rows.length} sample row(s)</summary><div class="table-wrap"><table data-sample="${esc(f.table)}"></table></div></details>` : ""}
+      </div>`,
+    )
+    .join("");
+  for (const f of files ?? []) {
+    const t = document.querySelector(`table[data-sample="${CSS.escape(f.table)}"]`);
+    if (t) drawTable(t, f.sample);
+  }
+}
+
 function drawScore(score) {
   if (!score) return;
   $("rank").textContent = score.rank.name;
@@ -103,6 +133,7 @@ function drawState(s) {
     if (g.case.id !== shownCaseId) {
       shownCaseId = g.case.id;
       typewrite($("case-story"), g.case.story);
+      drawFiles(g.case.files);
     }
     $("case-title").textContent = g.case.title;
     $("case-question").textContent = g.case.question;
@@ -151,6 +182,9 @@ function drawVerdict(r) {
 }
 
 async function pollTrace() {
+  // One poll at a time, or two in flight would both add the same lines.
+  if (tracePolling) return;
+  tracePolling = true;
   try {
     const { events } = await api(`/api/trace?since=${traceSince}`);
     traceSince += events.length;
@@ -161,7 +195,10 @@ async function pollTrace() {
       list.appendChild(li);
     }
     if (events.length) list.scrollTop = list.scrollHeight;
-  } catch {}
+  } catch {
+  } finally {
+    tracePolling = false;
+  }
 }
 
 async function pollStatus() {
@@ -218,6 +255,10 @@ $("btn-explain").onclick = async () => {
   const award = r?.game?.award;
   if (award) toast(award.rankAfter !== before && award.rankAfter !== award.rankBefore ? `Promoted to ${award.rankAfter}! +${award.points} pts` : `Case closed. +${award.points} pts`);
 };
+$("files").addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-insert]");
+  if (chip) insertAtCursor(chip.dataset.insert);
+});
 $("sql").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("btn-run").click();
 });

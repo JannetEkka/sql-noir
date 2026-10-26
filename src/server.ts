@@ -13,6 +13,7 @@ import { PlayerMemory } from "./game/memory.ts";
 import { Game, schemaText } from "./game/engine.ts";
 import { Scoreboard } from "./game/score.ts";
 import { AnswerCache } from "./game/answer-cache.ts";
+import { CaseFiles } from "./game/files.ts";
 import type { Runner, Skill } from "./game/cases.ts";
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
@@ -105,6 +106,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     schema: schemaText(),
     score: new Scoreboard(path.join(".data", "score.json")),
     answers: new AnswerCache(path.join(".data", "answers.json")),
+    files: new CaseFiles(run, path.join(".data", "tables.json")),
   });
   const checkZetaris = async () => {
     try {

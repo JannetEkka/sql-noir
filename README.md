@@ -61,7 +61,7 @@ npm start                     # then open http://localhost:4321
 
 ## Playing
 
-1. **Next case** opens a case. The validator checks it against the data first; the trace at the bottom shows each check.
+1. **Next case** opens a case. The validator checks it against the data first; the trace at the bottom shows each check. **The files** under the question lists the tables the case needs, with their columns, types and sample rows, read from Zetaris; click a name to put it in your query.
 2. Write a query and run it (Ctrl+Enter). If it's wrong, the **Evidence** panel shows what doesn't match. Nemo has already looked at your attempt; **Ask Nemo** opens the hint for 15 points. Hints get more specific each time: a nudge, then the concept, then a skeleton with blanks.
 3. When your result matches, explain **why** your query proves it. Nemo judges the explanation, the case is stamped closed, and the reference query is revealed.
 4. **Points:** a case is worth 100 x its level; each wrong attempt costs 20 and each hint 15; a solid explanation earns 50; solving cases without hints builds a streak bonus. Ranks go from Rookie through Gumshoe, Sleuth and Inspector to Chief Inspector.
@@ -73,14 +73,14 @@ npm start                     # then open http://localhost:4321
 | Command | What it does |
 |---|---|
 | `npm start` | Runs the game on http://localhost:4321 |
-| `npm test` | 45 unit and integration tests; no services needed |
+| `npm test` | 47 unit and integration tests; no services needed |
 | `npm run typecheck` | TypeScript check |
 | `npm run smoke` | Checks Zetaris and Nightshift together and records their replies in `fixtures/recorded` |
 | `npm run record:schema` | Records the sample databases' tables, columns and a few rows |
 | `npm run validate:cases` | Puts every seed case through the validator against your Zetaris |
 | `npm run conformance:hmem` | Runs the H-MEM conformance suite against the vendored engine |
 
-Every agent step is also appended to `.data/trace.jsonl`. Player memory lives in `.data/memory`, the score in `.data/score.json`, and checked case answers in `.data/answers.json` (so a case opens instantly after its first check; `npm run validate:cases` fills it). Delete `.data` to start a fresh detective.
+Every agent step is also appended to `.data/trace.jsonl`. Player memory lives in `.data/memory`, the score in `.data/score.json`, checked case answers in `.data/answers.json` and the tables' columns in `.data/tables.json` (so a case opens instantly after its first check; `npm run validate:cases` fills it). Delete `.data` to start a fresh detective.
 
 ## Project layout
 

@@ -16,6 +16,7 @@ import { designCase } from "../agents/designer.ts";
 import { SEED_CASES } from "./seed-cases.ts";
 import { AnswerCache } from "./answer-cache.ts";
 import { HINT_COST, Scoreboard, type Award } from "./score.ts";
+import { CaseFiles, type TableFile } from "./files.ts";
 
 type Phase = "investigating" | "explaining" | "closed";
 
@@ -32,6 +33,7 @@ interface Current {
   // The coach's hint for the last wrong attempt, kept until the player asks.
   pendingHint: Hint | null;
   award: Award | null;
+  files: TableFile[];
 }
 
 export interface SubmitResult {
@@ -87,6 +89,7 @@ export class Game {
   private readonly broken = new Set<string>();
   readonly score: Scoreboard;
   private readonly answers: AnswerCache;
+  private readonly files: CaseFiles;
   current: Current | null = null;
 
   constructor(
@@ -99,12 +102,14 @@ export class Game {
       schema?: string;
       score?: Scoreboard;
       answers?: AnswerCache;
+      files?: CaseFiles;
     },
   ) {
     this.cases = [...(deps.cases ?? SEED_CASES)];
     this.coach = new Coach(deps.provider, deps.trace);
     this.score = deps.score ?? new Scoreboard();
     this.answers = deps.answers ?? new AnswerCache();
+    this.files = deps.files ?? new CaseFiles(deps.run);
   }
 
   private async open(c: Case, pickReason: string): Promise<boolean> {
@@ -125,8 +130,10 @@ export class Game {
       answer = validation.answer!;
       this.answers.set(c, answer);
     }
+    const files = await this.files.forCase(c);
+    trace.log("game master", "pulled the case files", files.map((f) => `${f.table} (${f.columns.length} columns)`).join(", "));
     const recall = this.deps.memory.recall(c);
-    this.current = { c, answer, attempts: 0, hints: [], recall, phase: "investigating", lastSql: null, pickReason, judgement: null, pendingHint: null, award: null };
+    this.current = { c, answer, attempts: 0, hints: [], recall, phase: "investigating", lastSql: null, pickReason, judgement: null, pendingHint: null, award: null, files };
     return true;
   }
 
@@ -236,7 +243,7 @@ export class Game {
     if (!cur) return { case: null, score: this.score.view() };
     const closed = cur.phase === "closed";
     return {
-      case: { id: cur.c.id, title: cur.c.title, story: cur.c.story, question: cur.c.question, level: cur.c.level, skills: cur.c.skills, origin: cur.c.origin, orderMatters: cur.c.orderMatters },
+      case: { id: cur.c.id, title: cur.c.title, story: cur.c.story, question: cur.c.question, level: cur.c.level, skills: cur.c.skills, origin: cur.c.origin, orderMatters: cur.c.orderMatters, files: cur.files },
       phase: cur.phase,
       attempts: cur.attempts,
       hints: cur.hints,
