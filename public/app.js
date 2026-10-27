@@ -240,7 +240,7 @@ $("btn-next").onclick = async () => {
 };
 $("btn-design").onclick = async () => {
   const r = await act("design", "/api/design", {});
-  if (r && !r.ok) drawVerdict({ refused: `Nemo couldn't get a case past the validator this time: ${r.problem ?? "try again"}.` });
+  if (r && !r.ok) drawVerdict({ refused: `Nemo couldn't come up with a fair case this time: ${r.problem ?? "try again"}.` });
 };
 $("btn-run").onclick = async () => {
   const r = await act("query", "/api/query", { sql: $("sql").value });

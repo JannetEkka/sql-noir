@@ -76,7 +76,7 @@ npm start                     # then open http://localhost:4321
 | Command | What it does |
 |---|---|
 | `npm start` | Runs the game on http://localhost:4321 |
-| `npm test` | 48 unit and integration tests; no services needed |
+| `npm test` | 50 unit and integration tests; no services needed |
 | `npm run typecheck` | TypeScript check |
 | `npm run smoke` | Checks Zetaris and Nightshift together and records their replies in `fixtures/recorded` |
 | `npm run record:schema` | Records the sample databases' tables, columns and a few rows |

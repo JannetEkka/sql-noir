@@ -37,11 +37,14 @@ export interface ChatRequest {
   model?: string;
   tools?: ToolDefinition[];
   temperature?: number;
+  maxTokens?: number;
 }
 
 export interface ChatResult {
   message: ChatMessage;
   model: string | null;
+  // "length" when the reply hit the token limit before it finished.
+  finishReason: string | null;
   raw: unknown;
 }
 
@@ -163,6 +166,7 @@ export class MeterlessProvider {
       messages: request.messages,
       ...(request.tools?.length ? { tools: request.tools } : {}),
       ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+      ...(request.maxTokens ? { max_tokens: request.maxTokens } : {}),
     });
     for (let attempt = 0; ; attempt++) {
       let response: Response;
@@ -198,7 +202,8 @@ export class MeterlessProvider {
         content: messageText(choice) || null,
         ...(Array.isArray(choice.tool_calls) && choice.tool_calls.length ? { tool_calls: choice.tool_calls } : {}),
       };
-      return { message, model: typeof raw.model === "string" ? raw.model : null, raw };
+      const finishReason = raw?.choices?.[0]?.finish_reason;
+      return { message, model: typeof raw.model === "string" ? raw.model : null, finishReason: typeof finishReason === "string" ? finishReason : null, raw };
     }
   }
 }

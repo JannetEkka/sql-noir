@@ -6,8 +6,13 @@
 import type { MeterlessProvider } from "../meterless/provider.ts";
 import { validateCase, type Case, type Runner, type Skill, type Validation } from "../game/cases.ts";
 import type { Trace } from "../game/trace.ts";
-import { askJson } from "./llm.ts";
+import { askJsonResult } from "./llm.ts";
 import { SKILLS } from "./coach.ts";
+
+// A draft is the longest reply in the game, and Nemotron reasons before it
+// answers, so leave room for both instead of the runtime's default limit.
+const DESIGN_MAX_TOKENS = 8192;
+const UNREACHABLE_WAIT_MS = 5_000;
 
 export interface DesignAttempt {
   draft: Partial<Case> | null;
@@ -45,22 +50,26 @@ export async function designCase(input: {
   level: number;
   avoidTitles: string[];
   maxTries?: number;
+  wait?: (ms: number) => Promise<void>;
 }): Promise<{ c: Case | null; attempts: DesignAttempt[] }> {
   const attempts: DesignAttempt[] = [];
+  const tries = input.maxTries ?? 3;
+  const wait = input.wait ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const system = [
     "You design cases for a SQL detective game played on real data in Zetaris (Spark-style SQL).",
     "A case is a short noir-flavoured story, a precise question, and the reference query that answers it.",
     "Rules for the reference query: one read-only SELECT; qualify every table as DATABASE.table; the answer must be small (at most 10 rows, at most 4 columns);",
     "if you use ORDER BY ... LIMIT, make sure the cut-off can't tie; set orderMatters true only if the question asks for an order.",
-    "Write two hints that teach without giving the answer.",
+    "Keep the story to two or three sentences. Write two hints that teach without giving the answer.",
     'Reply with JSON only: {"title","story","question","answerSql","orderMatters","skills":[...],"level","hints":[...]}',
   ].join("\n");
   let feedback = "";
-  for (let i = 1; i <= (input.maxTries ?? 3); i++) {
+  for (let i = 1; i <= tries; i++) {
     input.trace.log("designer", "drafting a case", `skill ${input.skill}, level ${input.level}, try ${i}`);
-    const reply = await askJson<Record<string, unknown>>(input.provider, input.trace, {
+    const reply = await askJsonResult<Record<string, unknown>>(input.provider, input.trace, {
       agent: "designer",
       system,
+      maxTokens: DESIGN_MAX_TOKENS,
       user: [
         `Tables available:\n${input.schema}`,
         `The case must practise: ${input.skill} (level ${input.level} of 5). Skills to choose from: ${SKILLS.join(", ")}.`,
@@ -70,12 +79,27 @@ export async function designCase(input: {
         .filter(Boolean)
         .join("\n\n"),
     });
-    const c = toCase(reply?.value, input.skill, input.level);
-    if (!c) {
-      const problem = reply ? "the draft was missing a title, story, question or query" : "the model could not be reached";
-      attempts.push({ draft: (reply?.value as Partial<Case>) ?? null, validation: null, problem });
+    if (!reply.ok && !reply.reached) {
+      // Nightshift down, rate-limited or erroring: wait a little and ask again.
+      attempts.push({ draft: null, validation: null, problem: reply.reason });
+      if (i < tries) {
+        input.trace.log("designer", "will try again", `Nightshift didn't answer; asking again in ${UNREACHABLE_WAIT_MS / 1000} s`);
+        await wait(UNREACHABLE_WAIT_MS);
+      }
+      continue;
+    }
+    if (!reply.ok) {
+      const problem = `Nemotron's reply had no case in it: ${reply.reason}`;
+      attempts.push({ draft: null, validation: null, problem });
       input.trace.log("validator", "rejected draft", problem);
-      if (!reply) break;
+      feedback = `${reply.reason}. Reply with the JSON object only, and keep the story short`;
+      continue;
+    }
+    const c = toCase(reply.value, input.skill, input.level);
+    if (!c) {
+      const problem = "the draft was missing a title, story, question or query";
+      attempts.push({ draft: (reply.value as Partial<Case>) ?? null, validation: null, problem });
+      input.trace.log("validator", "rejected draft", problem);
       feedback = problem;
       continue;
     }
