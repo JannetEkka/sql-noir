@@ -4,6 +4,8 @@ A detective game that teaches you to query data. The game master gives you a cas
 
 Built for the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026), **Track 02: The Agent That Can Explain Why.** No verdict comes from the model's opinion. Every verdict is a comparison of two result sets on live data, and it comes with the rows that prove it.
 
+**Demo video (3:43):** https://youtu.be/oX4KvIMfIbE
+
 ## How it works
 
 ```
