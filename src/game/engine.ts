@@ -79,7 +79,8 @@ export function schemaText(file = "fixtures/recorded/schema.json"): string {
     "TPCDS_DB.item(i_item_sk, i_item_id, i_product_name, i_category, i_class, i_brand, i_current_price)",
     "TPCDS_DB.date_dim(d_date_sk, d_date, d_year, d_moy, d_dom, d_day_name, d_qoy, d_holiday, d_weekend)",
     "TPCDS_DB.promotion(p_promo_sk, p_promo_name, p_channel_email, p_channel_tv, p_cost)",
-    "NY_TAXI.taxi_zones(LocationID, Borough, Zone, service_zone)",
+    // The standard TLC file also has service_zone, but the Zetaris sample table doesn't (seen 11-03).
+    "NY_TAXI.taxi_zones(LocationID, Borough, Zone)",
   ].join("\n");
 }
 
